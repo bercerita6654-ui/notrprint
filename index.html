@@ -1,526 +1,434 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Printer, Plus, Trash2, Settings, FileText } from 'lucide-react';
-
-const App = () => {
-  const [isViewer, setIsViewer] = useState(false);
-
-  // State untuk menyimpan data invoice
-  const [data, setData] = useState({
-    companyName: 'BCreative & Printing',
-    companyAddress: 'Jl. Tukad Pakerisan No.26 Denpasar-bali',
-    date: '15-06-2026 12:27',
-    customer: 'boby',
-    transaction: 'EMAIL',
-    cashier: 'KADEK JUNIANTARA',
-    cs: 'MAHARDIKA FIDHO GIBRAN',
-    items: [
-      {
-        id: 1,
-        name: 'Sticker Bontak Glossy A3+',
-        price: 3000,
-        qty: 120,
-        details: '- Harga Satuan: Rp 3.000 per lembar'
-      },
-      {
-        id: 2,
-        name: 'Laminasi Glossy Hot A3+',
-        price: 1000,
-        qty: 120,
-        details: '- 120 lembar Laminasi Glossy Hot A3+'
-      },
-      {
-        id: 3,
-        name: 'Cutting Set. Putus A3+ ( 1/1 - 1/10 )',
-        price: 1000,
-        qty: 60,
-        details: '- 60 lembar Cutting Set. Putus A3+ ( 1/1 - 1/10 )'
-      },
-      {
-        id: 4,
-        name: 'Cutting Putus A3+ ( 1/11 - 1/34 )',
-        price: 3000,
-        qty: 60,
-        details: '- 60 lembar Cutting Putus A3+ ( 1/11 - 1/34 )'
-      }
-    ],
-    paidAmount: 720000
-  });
-
-  // Membaca data dari URL saat QR Code di-scan
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const invoiceData = params.get('invoice');
-    if (invoiceData) {
-      try {
-        // Decode data dari URL dan aktifkan Viewer Mode
-        const decoded = JSON.parse(decodeURIComponent(escape(atob(invoiceData))));
-        setData(decoded);
-        setIsViewer(true);
-      } catch (error) {
-        console.error("Gagal membaca data invoice dari URL", error);
-      }
-    }
-  }, []);
-
-  // Derived state untuk kalkulasi
-  const subTotal = data.items.reduce((acc, item) => acc + (item.price * item.qty), 0);
-  const total = subTotal; // Jika ada diskon atau pajak bisa ditambahkan disini
-  const status = data.paidAmount >= total ? 'Lunas' : 'Belum Lunas';
-
-  const formatNumber = (num) => {
-    return new Intl.NumberFormat('id-ID').format(num);
-  };
-
-  const handlePrint = () => {
-    window.print();
-  };
-
-  const handleItemChange = (id, field, value) => {
-    setData(prev => ({
-      ...prev,
-      items: prev.items.map(item => 
-        item.id === id ? { ...item, [field]: value } : item
-      )
-    }));
-  };
-
-  const addItem = () => {
-    setData(prev => ({
-      ...prev,
-      items: [
-        ...prev.items, 
-        { id: Date.now(), name: 'Produk Baru', price: 0, qty: 1, details: '' }
-      ]
-    }));
-  };
-
-  const removeItem = (id) => {
-    setData(prev => ({
-      ...prev,
-      items: prev.items.filter(item => item.id !== id)
-    }));
-  };
-
-  // Generate URL Dinamis untuk QR Code (mengenkode seluruh data nota ke URL)
-  const baseUrl = typeof window !== 'undefined' ? `${window.location.origin}${window.location.pathname}` : window.location.href;
-  const encodedData = btoa(unescape(encodeURIComponent(JSON.stringify(data))));
-  const dynamicQrUrl = `${baseUrl}?invoice=${encodedData}`;
-
-  // Mode Tampilan Nota Digital (Muncul hanya saat QR Code di-scan)
-  if (isViewer) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-gray-200 p-4 font-sans">
-        <button onClick={handlePrint} className="mb-4 flex items-center bg-blue-600 text-white px-4 py-2 rounded-lg shadow hover:bg-blue-700 transition hide-on-print">
-          <Printer size={18} className="mr-2" /> Cetak / Simpan PDF
-        </button>
-        {/* KERTAS THERMAL 80mm */}
-        <div 
-          id="print-area" 
-          className="bg-white shadow-2xl relative"
-          style={{ width: '80mm', padding: '4mm', fontFamily: "'Helvetica Neue', Helvetica, Arial, sans-serif", paddingBottom: '10mm' }}
-        >
-          {/* LOGO */}
-          <div className="text-center mb-1">
-            <div className="flex justify-center items-center font-bold text-[22px] tracking-tight text-blue-600">
-              BCreative & Printing
-            </div>
-          </div>
-
-          {/* ALAMAT */}
-          <div className="text-center text-[9px] leading-tight mb-3">
-            {data.companyAddress.split('\n').map((line, i) => (
-              <div key={i}>{line}</div>
-            ))}
-          </div>
-
-          {/* QR CODE BOX */}
-          <div className="border-[1.5px] border-black rounded-lg p-2 flex items-center gap-3 mb-4 mx-1">
-             <img 
-              src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(dynamicQrUrl)}`} 
-              alt="QR Code" 
-              className="w-14 h-14"
-            />
-            <div className="text-[9px] leading-snug font-medium">
-              Scan QR-Code untuk Download<br/>
-              Nota Digital & Cek Status Order
-            </div>
-          </div>
-
-          {/* META INFO */}
-          <table className="w-full text-[10px] mb-3">
-            <tbody>
-              <tr>
-                <td className="w-[60px] pb-[2px]">Tanggal</td>
-                <td className="w-[10px] pb-[2px] text-center">:</td>
-                <td className="pb-[2px]">{data.date}</td>
-              </tr>
-              <tr>
-                <td className="pb-[2px]">Kepada</td>
-                <td className="pb-[2px] text-center">:</td>
-                <td className="pb-[2px] font-bold text-[12px]">{data.customer}</td>
-              </tr>
-              <tr>
-                <td className="pb-[2px]">Transaksi</td>
-                <td className="pb-[2px] text-center">:</td>
-                <td className="pb-[2px] font-bold uppercase">{data.transaction}</td>
-              </tr>
-              <tr>
-                <td className="pb-[2px]">Kasir</td>
-                <td className="pb-[2px] text-center">:</td>
-                <td className="pb-[2px] uppercase">{data.cashier}</td>
-              </tr>
-              <tr>
-                <td className="pb-[2px]">CS</td>
-                <td className="pb-[2px] text-center">:</td>
-                <td className="pb-[2px] uppercase">{data.cs}</td>
-              </tr>
-            </tbody>
-          </table>
-
-          {/* TABEL PRODUK */}
-          <div className="w-full text-[10px]">
-            <div className="flex border-t-[1.5px] border-b-[1.5px] border-black py-1 font-semibold">
-              <div className="w-[45%]">Produk</div>
-              <div className="w-[20%] text-right">Harga</div>
-              <div className="w-[10%] text-right">Qty</div>
-              <div className="w-[25%] text-right">Total</div>
-            </div>
-
-            <div className="py-2 border-b-[1.5px] border-black">
-              {data.items.map((item) => (
-                <div key={item.id} className="mb-2 last:mb-0">
-                  <div className="flex font-bold text-[11px] leading-tight mb-[2px]">
-                    <div className="w-[45%] pr-1">{item.name}</div>
-                    <div className="w-[20%] text-right font-normal">{formatNumber(item.price)}</div>
-                    <div className="w-[10%] text-right font-normal">{item.qty}</div>
-                    <div className="w-[25%] text-right font-normal">{formatNumber(item.price * item.qty)}</div>
-                  </div>
-                  {item.details && item.details.split('\n').map((detail, idx) => (
-                    <div key={idx} className="flex text-[9px] text-black">
-                      <div className="w-full pr-1">{detail}</div>
-                    </div>
-                  ))}
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* TOTALS */}
-          <div className="flex justify-end mt-2 mb-4 text-[10px]">
-            <table className="w-[50%]">
-              <tbody>
-                <tr>
-                  <td className="text-right pr-2 pb-[2px]">Sub-total :</td>
-                  <td className="text-right pb-[2px] w-[60px]">{formatNumber(subTotal)}</td>
-                </tr>
-                <tr>
-                  <td className="text-right pr-2 pb-[2px]">Total :</td>
-                  <td className="text-right pb-[2px]">{formatNumber(total)}</td>
-                </tr>
-                <tr>
-                  <td className="text-right pr-2 pb-[2px]">Bayar :</td>
-                  <td className="text-right pb-[2px]">{formatNumber(data.paidAmount)}</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-
-          {/* KETERANGAN */}
-          <div className="flex items-center text-[10px] mb-8">
-            <span className="mr-2">Keterangan :</span>
-            <span className="font-bold text-lg">{status}</span>
-          </div>
-
-          {/* FOOTER */}
-          <div className="text-center text-[10px] mt-8">
-            <div className="mb-1">TERIMA KASIH</div>
-            <div>Silahkan Berkunjung Kembali</div>
-          </div>
-          <div className="border-b-[1.5px] border-black mt-6 mb-2"></div>
-        </div>
-        
-        <style>
-          {`
-            @media print {
-              body * { visibility: hidden; }
-              #print-area, #print-area * { visibility: visible; }
-              #print-area {
-                position: absolute; left: 0; top: 0;
-                width: 80mm; padding: 2mm; margin: 0;
-                box-sizing: border-box; background-color: white !important; box-shadow: none !important;
-              }
-              .hide-on-print { display: none !important; }
-              ::-webkit-scrollbar { display: none; }
-              @page { size: 80mm auto; margin: 0; }
-            }
-          `}
-        </style>
-      </div>
-    );
-  }
-
-  return (
-    <div className="flex h-screen bg-gray-100 font-sans">
-      {/* CSS Khusus untuk Print Ukuran Thermal 80mm */}
-      <style>
-        {`
-          @media print {
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aplikasi Invoice Thermal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* CSS Khusus untuk Print Ukuran Thermal 80mm */
+        @media print {
             body * {
-              visibility: hidden;
+                visibility: hidden;
             }
             #print-area, #print-area * {
-              visibility: visible;
+                visibility: visible;
             }
             #print-area {
-              position: absolute;
-              left: 0;
-              top: 0;
-              width: 80mm; /* Thermal Width */
-              margin: 0;
-              padding: 2mm;
-              box-sizing: border-box;
-              background-color: white !important;
-              box-shadow: none !important;
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 80mm; /* Thermal Width */
+                margin: 0;
+                padding: 2mm;
+                box-sizing: border-box;
+                background-color: white !important;
+                box-shadow: none !important;
             }
             /* Menyembunyikan scrollbar saat print */
             ::-webkit-scrollbar {
-              display: none;
+                display: none;
             }
             @page {
-              size: 80mm auto; /* Auto height untuk printer roll */
-              margin: 0;
+                size: 80mm auto; /* Auto height untuk printer roll */
+                margin: 0;
             }
-          }
-        `}
-      </style>
+            .hide-on-print {
+                display: none !important;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 font-sans h-screen overflow-hidden">
 
-      {/* PANEL KIRI: FORM EDITOR */}
-      <div className="w-1/2 overflow-y-auto bg-white border-r border-gray-300 shadow-lg p-6 hide-on-print">
-        <h2 className="text-2xl font-bold mb-6 flex items-center text-blue-600">
-          <Settings className="mr-2" /> Editor Invoice
-        </h2>
-
-        {/* Section: Info Header */}
-        <div className="bg-gray-50 p-4 rounded-lg border mb-6">
-          <h3 className="font-semibold mb-4 text-gray-700">Informasi Umum</h3>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-600 mb-1">Tanggal & Waktu</label>
-              <input type="text" value={data.date} onChange={(e) => setData({...data, date: e.target.value})} className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-400 outline-none" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-600 mb-1">Kepada (Pelanggan)</label>
-              <input type="text" value={data.customer} onChange={(e) => setData({...data, customer: e.target.value})} className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-400 outline-none font-semibold" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-600 mb-1">Transaksi</label>
-              <input type="text" value={data.transaction} onChange={(e) => setData({...data, transaction: e.target.value})} className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-400 outline-none" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-600 mb-1">Kasir</label>
-              <input type="text" value={data.cashier} onChange={(e) => setData({...data, cashier: e.target.value})} className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-400 outline-none" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-600 mb-1">CS</label>
-              <input type="text" value={data.cs} onChange={(e) => setData({...data, cs: e.target.value})} className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-400 outline-none" />
-            </div>
-          </div>
-        </div>
-
-        {/* Section: Produk */}
-        <div className="bg-gray-50 p-4 rounded-lg border mb-6">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="font-semibold text-gray-700">Daftar Produk</h3>
-            <button onClick={addItem} className="flex items-center text-sm bg-blue-100 text-blue-700 px-3 py-1 rounded hover:bg-blue-200 transition">
-              <Plus size={16} className="mr-1" /> Tambah Produk
-            </button>
-          </div>
-          
-          {data.items.map((item, index) => (
-            <div key={item.id} className="mb-4 bg-white p-3 border rounded-md shadow-sm relative">
-              <button onClick={() => removeItem(item.id)} className="absolute top-2 right-2 text-red-500 hover:text-red-700">
-                <Trash2 size={18} />
-              </button>
-              <div className="grid grid-cols-12 gap-3 mb-2">
-                <div className="col-span-12 md:col-span-6">
-                  <label className="block text-xs text-gray-500 mb-1">Nama Produk</label>
-                  <input type="text" value={item.name} onChange={(e) => handleItemChange(item.id, 'name', e.target.value)} className="w-full p-1 border rounded text-sm font-semibold" />
-                </div>
-                <div className="col-span-4 md:col-span-3">
-                  <label className="block text-xs text-gray-500 mb-1">Harga (Rp)</label>
-                  <input type="number" value={item.price} onChange={(e) => handleItemChange(item.id, 'price', Number(e.target.value))} className="w-full p-1 border rounded text-sm" />
-                </div>
-                <div className="col-span-4 md:col-span-3">
-                  <label className="block text-xs text-gray-500 mb-1">Qty</label>
-                  <input type="number" value={item.qty} onChange={(e) => handleItemChange(item.id, 'qty', Number(e.target.value))} className="w-full p-1 border rounded text-sm" />
-                </div>
-              </div>
-              <div>
-                <label className="block text-xs text-gray-500 mb-1">Keterangan / Detail (Pisahkan baris dengan Enter)</label>
-                <textarea rows="2" value={item.details} onChange={(e) => handleItemChange(item.id, 'details', e.target.value)} className="w-full p-1 border rounded text-xs outline-none focus:ring-1 focus:ring-blue-400"></textarea>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Section: Pembayaran */}
-        <div className="bg-gray-50 p-4 rounded-lg border mb-6">
-           <h3 className="font-semibold mb-4 text-gray-700">Pembayaran</h3>
-           <div>
-              <label className="block text-sm font-medium text-gray-600 mb-1">Jumlah Dibayar (Rp)</label>
-              <input type="number" value={data.paidAmount} onChange={(e) => setData({...data, paidAmount: Number(e.target.value)})} className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-400 outline-none text-lg font-bold" />
-            </div>
-        </div>
-
-      </div>
-
-      {/* PANEL KANAN: PREVIEW THERMAL & CETAK */}
-      <div className="w-1/2 flex flex-col items-center bg-gray-200 p-8 overflow-y-auto">
-        <div className="flex justify-between w-[80mm] mb-4">
-          <h2 className="text-gray-700 font-semibold flex items-center text-sm whitespace-nowrap">
-            <FileText className="mr-2" size={18} /> Preview Thermal
-          </h2>
-          <button 
-            onClick={handlePrint} 
-            className="flex items-center bg-blue-600 text-white px-3 py-2 rounded-lg shadow hover:bg-blue-700 transition text-sm"
-          >
-            <Printer size={16} className="mr-1" /> Cetak
-          </button>
-        </div>
-
-        {/* KERTAS THERMAL 80mm */}
-        <div 
-          id="print-area" 
-          className="bg-white shadow-2xl relative"
-          style={{ width: '80mm', padding: '4mm', fontFamily: "'Helvetica Neue', Helvetica, Arial, sans-serif", paddingBottom: '10mm' }}
-        >
-          {/* LOGO */}
-          <div className="text-center mb-1">
-            <div className="flex justify-center items-center font-bold text-[22px] tracking-tight text-blue-600">
-              BCreative & Printing
-            </div>
-          </div>
-
-          {/* ALAMAT */}
-          <div className="text-center text-[9px] leading-tight mb-3">
-            {data.companyAddress.split('\n').map((line, i) => (
-              <div key={i}>{line}</div>
-            ))}
-          </div>
-
-          {/* QR CODE BOX */}
-          <div className="border-[1.5px] border-black rounded-lg p-2 flex items-center gap-3 mb-4 mx-1">
-             <img 
-              src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(dynamicQrUrl)}`} 
-              alt="QR Code" 
-              className="w-14 h-14"
-            />
-            <div className="text-[9px] leading-snug font-medium">
-              Scan QR-Code untuk Download<br/>
-              Nota Digital & Cek Status Order
-            </div>
-          </div>
-
-          {/* META INFO */}
-          <table className="w-full text-[10px] mb-3">
-            <tbody>
-              <tr>
-                <td className="w-[60px] pb-[2px]">Tanggal</td>
-                <td className="w-[10px] pb-[2px] text-center">:</td>
-                <td className="pb-[2px]">{data.date}</td>
-              </tr>
-              <tr>
-                <td className="pb-[2px]">Kepada</td>
-                <td className="pb-[2px] text-center">:</td>
-                <td className="pb-[2px] font-bold text-[12px]">{data.customer}</td>
-              </tr>
-              <tr>
-                <td className="pb-[2px]">Transaksi</td>
-                <td className="pb-[2px] text-center">:</td>
-                <td className="pb-[2px] font-bold uppercase">{data.transaction}</td>
-              </tr>
-              <tr>
-                <td className="pb-[2px]">Kasir</td>
-                <td className="pb-[2px] text-center">:</td>
-                <td className="pb-[2px] uppercase">{data.cashier}</td>
-              </tr>
-              <tr>
-                <td className="pb-[2px]">CS</td>
-                <td className="pb-[2px] text-center">:</td>
-                <td className="pb-[2px] uppercase">{data.cs}</td>
-              </tr>
-            </tbody>
-          </table>
-
-          {/* TABEL PRODUK */}
-          <div className="w-full text-[10px]">
-            <div className="flex border-t-[1.5px] border-b-[1.5px] border-black py-1 font-semibold">
-              <div className="w-[45%]">Produk</div>
-              <div className="w-[20%] text-right">Harga</div>
-              <div className="w-[10%] text-right">Qty</div>
-              <div className="w-[25%] text-right">Total</div>
-            </div>
-
-            <div className="py-2 border-b-[1.5px] border-black">
-              {data.items.map((item) => (
-                <div key={item.id} className="mb-2 last:mb-0">
-                  {/* Main Item Row */}
-                  <div className="flex font-bold text-[11px] leading-tight mb-[2px]">
-                    <div className="w-[45%] pr-1">{item.name}</div>
-                    <div className="w-[20%] text-right font-normal">{formatNumber(item.price)}</div>
-                    <div className="w-[10%] text-right font-normal">{item.qty}</div>
-                    <div className="w-[25%] text-right font-normal">{formatNumber(item.price * item.qty)}</div>
-                  </div>
-                  {/* Details/Sub-items */}
-                  {item.details && item.details.split('\n').map((detail, idx) => (
-                    <div key={idx} className="flex text-[9px] text-black">
-                      <div className="w-full pr-1">{detail}</div>
-                    </div>
-                  ))}
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* TOTALS */}
-          <div className="flex justify-end mt-2 mb-4 text-[10px]">
-            <table className="w-[50%]">
-              <tbody>
-                <tr>
-                  <td className="text-right pr-2 pb-[2px]">Sub-total :</td>
-                  <td className="text-right pb-[2px] w-[60px]">{formatNumber(subTotal)}</td>
-                </tr>
-                <tr>
-                  <td className="text-right pr-2 pb-[2px]">Total :</td>
-                  <td className="text-right pb-[2px]">{formatNumber(total)}</td>
-                </tr>
-                <tr>
-                  <td className="text-right pr-2 pb-[2px]">Bayar :</td>
-                  <td className="text-right pb-[2px]">{formatNumber(data.paidAmount)}</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-
-          {/* KETERANGAN */}
-          <div className="flex items-center text-[10px] mb-8">
-            <span className="mr-2">Keterangan :</span>
-            <span className="font-bold text-lg">{status}</span>
-          </div>
-
-          {/* FOOTER */}
-          <div className="text-center text-[10px] mt-8">
-            <div className="mb-1">TERIMA KASIH</div>
-            <div>Silahkan Berkunjung Kembali</div>
-          </div>
-          
-          {/* Bottom line decorator matching image */}
-          <div className="border-b-[1.5px] border-black mt-6 mb-2"></div>
-
-        </div>
-      </div>
+    <!-- VIEWER MODE (Tersembunyi secara default, hanya muncul saat scan QR) -->
+    <div id="viewer-view" class="hidden flex-col items-center justify-center min-h-screen bg-gray-200 p-4 overflow-y-auto">
+        <button onclick="window.print()" class="mb-4 flex items-center bg-blue-600 text-white px-4 py-2 rounded-lg shadow hover:bg-blue-700 transition hide-on-print">
+            <svg class="mr-2" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+            Cetak / Simpan PDF
+        </button>
+        <!-- Wadah untuk print-area saat mode viewer -->
+        <div id="viewer-container"></div>
     </div>
-  );
-};
 
-export default App;
+    <!-- EDITOR MODE (Tampilan Utama Aplikasi) -->
+    <div id="editor-view" class="flex h-screen hidden">
+        
+        <!-- PANEL KIRI: FORM EDITOR -->
+        <div class="w-1/2 overflow-y-auto bg-white border-r border-gray-300 shadow-lg p-6 hide-on-print">
+            <h2 class="text-2xl font-bold mb-6 flex items-center text-blue-600">
+                <svg class="mr-2" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                Editor Invoice
+            </h2>
+
+            <!-- Informasi Umum -->
+            <div class="bg-gray-50 p-4 rounded-lg border mb-6">
+                <h3 class="font-semibold mb-4 text-gray-700">Informasi Umum</h3>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-600 mb-1">Tanggal & Waktu</label>
+                        <input type="text" id="input-date" class="w-full p-2 border rounded focus:ring-2 focus:ring-blue-400 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-600 mb-1">Kepada (Pelanggan)</label>
+                        <input type="text" id="input-customer" class="w-full p-2 border rounded focus:ring-2 focus:ring-blue-400 outline-none font-semibold">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-600 mb-1">Transaksi</label>
+                        <input type="text" id="input-transaction" class="w-full p-2 border rounded focus:ring-2 focus:ring-blue-400 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-600 mb-1">Kasir</label>
+                        <input type="text" id="input-cashier" class="w-full p-2 border rounded focus:ring-2 focus:ring-blue-400 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-600 mb-1">CS</label>
+                        <input type="text" id="input-cs" class="w-full p-2 border rounded focus:ring-2 focus:ring-blue-400 outline-none">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Daftar Produk -->
+            <div class="bg-gray-50 p-4 rounded-lg border mb-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="font-semibold text-gray-700">Daftar Produk</h3>
+                    <button onclick="addItem()" class="flex items-center text-sm bg-blue-100 text-blue-700 px-3 py-1 rounded hover:bg-blue-200 transition">
+                        <svg class="mr-1" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                        Tambah Produk
+                    </button>
+                </div>
+                
+                <div id="items-container">
+                    <!-- Produk akan dirender lewat JavaScript disini -->
+                </div>
+            </div>
+
+            <!-- Pembayaran -->
+            <div class="bg-gray-50 p-4 rounded-lg border mb-6">
+                <h3 class="font-semibold mb-4 text-gray-700">Pembayaran</h3>
+                <div>
+                    <label class="block text-sm font-medium text-gray-600 mb-1">Jumlah Dibayar (Rp)</label>
+                    <input type="number" id="input-paidAmount" class="w-full p-2 border rounded focus:ring-2 focus:ring-blue-400 outline-none text-lg font-bold">
+                </div>
+            </div>
+        </div>
+
+        <!-- PANEL KANAN: PREVIEW THERMAL & CETAK -->
+        <div class="w-1/2 flex flex-col items-center bg-gray-200 p-8 overflow-y-auto">
+            <div class="flex justify-between w-[80mm] mb-4 hide-on-print">
+                <h2 class="text-gray-700 font-semibold flex items-center text-sm whitespace-nowrap">
+                    <svg class="mr-2" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                    Preview Thermal
+                </h2>
+                <button onclick="window.print()" class="flex items-center bg-blue-600 text-white px-3 py-2 rounded-lg shadow hover:bg-blue-700 transition text-sm">
+                    <svg class="mr-1" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+                    Cetak
+                </button>
+            </div>
+
+            <!-- Wadah untuk print-area saat mode editor -->
+            <div id="editor-preview-container">
+                <!-- Elemen NOTA ACTUAL yang akan dipindah-pindah antara editor & viewer mode -->
+                <div id="print-area" class="bg-white shadow-2xl relative" style="width: 80mm; padding: 4mm; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; padding-bottom: 10mm;">
+                    <!-- Konten nota dirender lewat JS -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SCRIPT LOGIKA APLIKASI -->
+    <script>
+        // State Data Invoice Default
+        let invoiceData = {
+            companyName: 'BCreative & Printing',
+            companyAddress: 'Jl. Tukad Pakerisan No.26 Denpasar-bali',
+            date: '15-06-2026 12:27',
+            customer: 'boby',
+            transaction: 'EMAIL',
+            cashier: 'KADEK JUNIANTARA',
+            cs: 'MAHARDIKA FIDHO GIBRAN',
+            items: [
+                {
+                    id: 1,
+                    name: 'Sticker Bontak Glossy A3+',
+                    price: 3000,
+                    qty: 120,
+                    details: '- Harga Satuan: Rp 3.000 per lembar'
+                },
+                {
+                    id: 2,
+                    name: 'Laminasi Glossy Hot A3+',
+                    price: 1000,
+                    qty: 120,
+                    details: '- 120 lembar Laminasi Glossy Hot A3+'
+                },
+                {
+                    id: 3,
+                    name: 'Cutting Set. Putus A3+ ( 1/1 - 1/10 )',
+                    price: 1000,
+                    qty: 60,
+                    details: '- 60 lembar Cutting Set. Putus A3+ ( 1/1 - 1/10 )'
+                },
+                {
+                    id: 4,
+                    name: 'Cutting Putus A3+ ( 1/11 - 1/34 )',
+                    price: 3000,
+                    qty: 60,
+                    details: '- 60 lembar Cutting Putus A3+ ( 1/11 - 1/34 )'
+                }
+            ],
+            paidAmount: 720000
+        };
+
+        let isViewerMode = false;
+
+        // Utilities
+        const formatNumber = (num) => new Intl.NumberFormat('id-ID').format(num);
+
+        function getDynamicQrUrl() {
+            const baseUrl = window.location.origin + window.location.pathname;
+            const encodedData = btoa(unescape(encodeURIComponent(JSON.stringify(invoiceData))));
+            return `${baseUrl}?invoice=${encodedData}`;
+        }
+
+        // --- CORE RENDERING ---
+
+        // 1. Render isi Nota (Nota Thermal)
+        function renderReceipt() {
+            const subTotal = invoiceData.items.reduce((acc, item) => acc + (item.price * item.qty), 0);
+            const status = invoiceData.paidAmount >= subTotal ? 'Lunas' : 'Belum Lunas';
+            const qrUrl = getDynamicQrUrl();
+
+            const itemsHtml = invoiceData.items.map(item => `
+                <div class="mb-2 last:mb-0">
+                    <div class="flex font-bold text-[11px] leading-tight mb-[2px]">
+                        <div class="w-[45%] pr-1">${item.name}</div>
+                        <div class="w-[20%] text-right font-normal">${formatNumber(item.price)}</div>
+                        <div class="w-[10%] text-right font-normal">${item.qty}</div>
+                        <div class="w-[25%] text-right font-normal">${formatNumber(item.price * item.qty)}</div>
+                    </div>
+                    ${item.details ? item.details.split('\n').map(detail => `
+                        <div class="flex text-[9px] text-black">
+                            <div class="w-full pr-1">${detail}</div>
+                        </div>
+                    `).join('') : ''}
+                </div>
+            `).join('');
+
+            const receiptHtml = `
+                <!-- LOGO -->
+                <div class="text-center mb-1">
+                    <div class="flex justify-center items-center font-bold text-[22px] tracking-tight text-blue-600">
+                        ${invoiceData.companyName}
+                    </div>
+                </div>
+
+                <!-- ALAMAT -->
+                <div class="text-center text-[9px] leading-tight mb-3">
+                    ${invoiceData.companyAddress.split('\n').map(line => `<div>${line}</div>`).join('')}
+                </div>
+
+                <!-- QR CODE BOX -->
+                <div class="border-[1.5px] border-black rounded-lg p-2 flex items-center gap-3 mb-4 mx-1">
+                    <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(qrUrl)}" alt="QR Code" class="w-14 h-14" />
+                    <div class="text-[9px] leading-snug font-medium">
+                        Scan QR-Code untuk Download<br/>
+                        Nota Digital & Cek Status Order
+                    </div>
+                </div>
+
+                <!-- META INFO -->
+                <table class="w-full text-[10px] mb-3">
+                    <tbody>
+                        <tr>
+                            <td class="w-[60px] pb-[2px]">Tanggal</td>
+                            <td class="w-[10px] pb-[2px] text-center">:</td>
+                            <td class="pb-[2px]">${invoiceData.date}</td>
+                        </tr>
+                        <tr>
+                            <td class="pb-[2px]">Kepada</td>
+                            <td class="pb-[2px] text-center">:</td>
+                            <td class="pb-[2px] font-bold text-[12px]">${invoiceData.customer}</td>
+                        </tr>
+                        <tr>
+                            <td class="pb-[2px]">Transaksi</td>
+                            <td class="pb-[2px] text-center">:</td>
+                            <td class="pb-[2px] font-bold uppercase">${invoiceData.transaction}</td>
+                        </tr>
+                        <tr>
+                            <td class="pb-[2px]">Kasir</td>
+                            <td class="pb-[2px] text-center">:</td>
+                            <td class="pb-[2px] uppercase">${invoiceData.cashier}</td>
+                        </tr>
+                        <tr>
+                            <td class="pb-[2px]">CS</td>
+                            <td class="pb-[2px] text-center">:</td>
+                            <td class="pb-[2px] uppercase">${invoiceData.cs}</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <!-- TABEL PRODUK -->
+                <div class="w-full text-[10px]">
+                    <div class="flex border-t-[1.5px] border-b-[1.5px] border-black py-1 font-semibold">
+                        <div class="w-[45%]">Produk</div>
+                        <div class="w-[20%] text-right">Harga</div>
+                        <div class="w-[10%] text-right">Qty</div>
+                        <div class="w-[25%] text-right">Total</div>
+                    </div>
+                    <div class="py-2 border-b-[1.5px] border-black">
+                        ${itemsHtml}
+                    </div>
+                </div>
+
+                <!-- TOTALS -->
+                <div class="flex justify-end mt-2 mb-4 text-[10px]">
+                    <table class="w-[50%]">
+                        <tbody>
+                            <tr>
+                                <td class="text-right pr-2 pb-[2px]">Sub-total :</td>
+                                <td class="text-right pb-[2px] w-[60px]">${formatNumber(subTotal)}</td>
+                            </tr>
+                            <tr>
+                                <td class="text-right pr-2 pb-[2px]">Total :</td>
+                                <td class="text-right pb-[2px]">${formatNumber(subTotal)}</td>
+                            </tr>
+                            <tr>
+                                <td class="text-right pr-2 pb-[2px]">Bayar :</td>
+                                <td class="text-right pb-[2px]">${formatNumber(invoiceData.paidAmount)}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- KETERANGAN -->
+                <div class="flex items-center text-[10px] mb-8">
+                    <span class="mr-2">Keterangan :</span>
+                    <span class="font-bold text-lg">${status}</span>
+                </div>
+
+                <!-- FOOTER -->
+                <div class="text-center text-[10px] mt-8">
+                    <div class="mb-1">TERIMA KASIH</div>
+                    <div>Silahkan Berkunjung Kembali</div>
+                </div>
+                <div class="border-b-[1.5px] border-black mt-6 mb-2"></div>
+            `;
+
+            document.getElementById('print-area').innerHTML = receiptHtml;
+        }
+
+        // 2. Render Form Produk (Editor)
+        function renderItemsForm() {
+            if (isViewerMode) return;
+            const container = document.getElementById('items-container');
+            container.innerHTML = invoiceData.items.map((item, index) => `
+                <div class="mb-4 bg-white p-3 border rounded-md shadow-sm relative item-row" data-id="${item.id}">
+                    <button onclick="removeItem(${item.id})" class="absolute top-2 right-2 text-red-500 hover:text-red-700">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                    </button>
+                    <div class="grid grid-cols-12 gap-3 mb-2">
+                        <div class="col-span-12 md:col-span-6">
+                            <label class="block text-xs text-gray-500 mb-1">Nama Produk</label>
+                            <input type="text" oninput="handleItemChange(${item.id}, 'name', this.value)" value="${item.name}" class="w-full p-1 border rounded text-sm font-semibold">
+                        </div>
+                        <div class="col-span-4 md:col-span-3">
+                            <label class="block text-xs text-gray-500 mb-1">Harga (Rp)</label>
+                            <input type="number" oninput="handleItemChange(${item.id}, 'price', this.value)" value="${item.price}" class="w-full p-1 border rounded text-sm">
+                        </div>
+                        <div class="col-span-4 md:col-span-3">
+                            <label class="block text-xs text-gray-500 mb-1">Qty</label>
+                            <input type="number" oninput="handleItemChange(${item.id}, 'qty', this.value)" value="${item.qty}" class="w-full p-1 border rounded text-sm">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs text-gray-500 mb-1">Keterangan / Detail (Pisahkan baris dengan Enter)</label>
+                        <textarea rows="2" oninput="handleItemChange(${item.id}, 'details', this.value)" class="w-full p-1 border rounded text-xs outline-none focus:ring-1 focus:ring-blue-400">${item.details}</textarea>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // 3. Set nilai awal pada Input Statis (General Info)
+        function initStaticInputs() {
+            if (isViewerMode) return;
+            const fields = ['date', 'customer', 'transaction', 'cashier', 'cs', 'paidAmount'];
+            fields.forEach(field => {
+                const el = document.getElementById(`input-${field}`);
+                if(el) {
+                    el.value = invoiceData[field];
+                    el.addEventListener('input', (e) => {
+                        invoiceData[field] = field === 'paidAmount' ? Number(e.target.value) : e.target.value;
+                        renderReceipt(); // Langsung update nota
+                    });
+                }
+            });
+        }
+
+
+        // --- FUNGSI INTERAKSI ---
+        window.handleItemChange = (id, field, value) => {
+            const item = invoiceData.items.find(i => i.id === id);
+            if (item) {
+                item[field] = (field === 'price' || field === 'qty') ? Number(value) : value;
+                renderReceipt();
+            }
+        };
+
+        window.addItem = () => {
+            invoiceData.items.push({
+                id: Date.now(),
+                name: 'Produk Baru',
+                price: 0,
+                qty: 1,
+                details: ''
+            });
+            renderItemsForm();
+            renderReceipt();
+        };
+
+        window.removeItem = (id) => {
+            invoiceData.items = invoiceData.items.filter(item => item.id !== id);
+            renderItemsForm();
+            renderReceipt();
+        };
+
+        // --- INISIALISASI SAAT HALAMAN DIMUAT ---
+        function initApp() {
+            // Cek apakah ada parameter 'invoice' di URL (Mode QR / Viewer)
+            const params = new URLSearchParams(window.location.search);
+            const qrData = params.get('invoice');
+
+            if (qrData) {
+                try {
+                    // Decode URL ke objek JSON
+                    invoiceData = JSON.parse(decodeURIComponent(escape(atob(qrData))));
+                    isViewerMode = true;
+                    
+                    // Pindah DOM print-area ke viewer container
+                    document.getElementById('viewer-container').appendChild(document.getElementById('print-area'));
+                    
+                    // Tampilkan Viewer, sembunyikan Editor
+                    document.getElementById('viewer-view').classList.remove('hidden');
+                    document.getElementById('viewer-view').classList.add('flex');
+                    document.getElementById('editor-view').classList.add('hidden');
+                    
+                    renderReceipt();
+                    return; // Stop inisialisasi form editor
+                } catch (error) {
+                    console.error("Gagal membaca data invoice dari URL", error);
+                }
+            }
+
+            // Jika tidak ada data QR, buka mode normal (Editor)
+            document.getElementById('editor-view').classList.remove('hidden');
+            initStaticInputs();
+            renderItemsForm();
+            renderReceipt();
+        }
+
+        // Jalankan aplikasi
+        initApp();
+    </script>
+</body>
+</html>
