@@ -49,7 +49,7 @@
         <div class="flex flex-wrap justify-center gap-2 mb-4 hide-on-print">
             <button onclick="downloadPDF()" class="flex items-center bg-green-600 text-white px-4 py-2 rounded-lg shadow hover:bg-green-700 transition">
                 <svg class="mr-2" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-                Download PDF
+                Share / Download PDF
             </button>
             <button onclick="window.print()" class="flex items-center bg-blue-600 text-white px-4 py-2 rounded-lg shadow hover:bg-blue-700 transition">
                 <svg class="mr-2" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
@@ -133,9 +133,9 @@
                 </h2>
                 <div class="flex gap-2 ml-auto">
                     <!-- Tombol Download PDF -->
-                    <button onclick="downloadPDF()" title="Download PDF" class="flex items-center bg-green-600 text-white px-3 py-2 rounded-lg shadow hover:bg-green-700 transition text-sm">
+                    <button onclick="downloadPDF()" title="Bagikan / Download PDF" class="flex items-center bg-green-600 text-white px-3 py-2 rounded-lg shadow hover:bg-green-700 transition text-sm">
                         <svg class="sm:mr-1" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-                        <span class="hidden sm:inline">PDF</span>
+                        <span class="hidden sm:inline">Share PDF</span>
                     </button>
                     <!-- Tombol Cetak Browser -->
                     <button onclick="window.print()" title="Cetak ke Printer" class="flex items-center bg-blue-600 text-white px-3 py-2 rounded-lg shadow hover:bg-blue-700 transition text-sm">
@@ -399,13 +399,13 @@
             renderReceipt();
         };
 
-        // Konversi Nota HTML ke PDF Menggunakan html2pdf.js
+        // Konversi Nota HTML ke PDF dan memanggil fungsi Web Share
         window.downloadPDF = () => {
             const element = document.getElementById('print-area');
             
-            // Kalkulasi panjang kertas berdasarkan actual pixel di layar (agar tidak terpotong putih di bawah)
+            // Kalkulasi panjang kertas berdasarkan actual pixel di layar
             const pxHeight = element.offsetHeight;
-            const mmHeight = pxHeight * 0.264583; // Konversi Kasar Pixel ke Milimeter
+            const mmHeight = pxHeight * 0.264583;
             
             // Format File Name
             const safeName = invoiceData.customer.replace(/[^a-z0-9]/gi, '_').toLowerCase();
@@ -416,12 +416,28 @@
                 filename:     filename,
                 image:        { type: 'jpeg', quality: 1 },
                 html2canvas:  { scale: 2, useCORS: true, backgroundColor: '#ffffff' },
-                // Pakai ukuran lebar fix thermal 80mm, tingginya menyesuaikan dinamis (min 100mm)
                 jsPDF:        { unit: 'mm', format: [80, Math.max(mmHeight + 5, 100)], orientation: 'portrait' }
             };
 
-            // Jalankan Download
-            html2pdf().set(opt).from(element).save();
+            const worker = html2pdf().set(opt).from(element);
+
+            // Output blob data PDF alih-alih langsung save()
+            worker.output('blob').then(function (pdfBlob) {
+                // Konversi Blob menjadi objek File
+                const file = new File([pdfBlob], filename, { type: 'application/pdf' });
+
+                // Periksa jika browser & OS pengguna mendukung Web Share API yang menyertakan File
+                if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                    navigator.share({
+                        files: [file],
+                        title: 'Invoice Pesanan - ' + invoiceData.companyName,
+                        text: 'Berikut adalah invoice pesanan Anda.'
+                    }).catch((error) => console.log('Batal dibagikan', error));
+                } else {
+                    // Fallback: Jika tidak mendukung Share (contoh PC lama), maka langsung didownload seperti biasa
+                    worker.save();
+                }
+            });
         };
 
         // --- INISIALISASI SAAT HALAMAN DIMUAT ---
