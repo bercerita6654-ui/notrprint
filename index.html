@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Aplikasi Invoice Thermal</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Tambahan Library html2pdf untuk konversi PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <style>
         /* CSS Khusus untuk Print Ukuran Thermal 80mm */
         @media print {
@@ -39,24 +41,32 @@
         }
     </style>
 </head>
-<body class="bg-gray-100 font-sans h-screen overflow-hidden">
+<!-- Ubah ke h-auto di mobile, h-screen di desktop -->
+<body class="bg-gray-100 font-sans md:h-screen md:overflow-hidden overflow-x-hidden">
 
     <!-- VIEWER MODE (Tersembunyi secara default, hanya muncul saat scan QR) -->
     <div id="viewer-view" class="hidden flex-col items-center justify-center min-h-screen bg-gray-200 p-4 overflow-y-auto">
-        <button onclick="window.print()" class="mb-4 flex items-center bg-blue-600 text-white px-4 py-2 rounded-lg shadow hover:bg-blue-700 transition hide-on-print">
-            <svg class="mr-2" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
-            Cetak / Simpan PDF
-        </button>
+        <div class="flex flex-wrap justify-center gap-2 mb-4 hide-on-print">
+            <button onclick="downloadPDF()" class="flex items-center bg-green-600 text-white px-4 py-2 rounded-lg shadow hover:bg-green-700 transition">
+                <svg class="mr-2" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                Download PDF
+            </button>
+            <button onclick="window.print()" class="flex items-center bg-blue-600 text-white px-4 py-2 rounded-lg shadow hover:bg-blue-700 transition">
+                <svg class="mr-2" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+                Cetak Thermal
+            </button>
+        </div>
         <!-- Wadah untuk print-area saat mode viewer -->
-        <div id="viewer-container"></div>
+        <div id="viewer-container" class="w-full flex justify-center overflow-x-auto pb-8"></div>
     </div>
 
     <!-- EDITOR MODE (Tampilan Utama Aplikasi) -->
-    <div id="editor-view" class="flex h-screen hidden">
+    <!-- Layout jadi susun bawah di HP (flex-col), sejajar di Laptop (md:flex-row) -->
+    <div id="editor-view" class="flex flex-col md:flex-row h-auto md:h-screen hidden">
         
         <!-- PANEL KIRI: FORM EDITOR -->
-        <div class="w-1/2 overflow-y-auto bg-white border-r border-gray-300 shadow-lg p-6 hide-on-print">
-            <h2 class="text-2xl font-bold mb-6 flex items-center text-blue-600">
+        <div class="w-full md:w-1/2 h-auto md:h-full overflow-y-auto bg-white border-b md:border-b-0 md:border-r border-gray-300 shadow-lg p-4 md:p-6 hide-on-print">
+            <h2 class="text-xl md:text-2xl font-bold mb-6 flex items-center text-blue-600">
                 <svg class="mr-2" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
                 Editor Invoice
             </h2>
@@ -64,7 +74,7 @@
             <!-- Informasi Umum -->
             <div class="bg-gray-50 p-4 rounded-lg border mb-6">
                 <h3 class="font-semibold mb-4 text-gray-700">Informasi Umum</h3>
-                <div class="grid grid-cols-2 gap-4">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4"> <!-- Berubah ke grid-cols-1 di layar kecil -->
                     <div>
                         <label class="block text-sm font-medium text-gray-600 mb-1">Tanggal & Waktu</label>
                         <input type="text" id="input-date" class="w-full p-2 border rounded focus:ring-2 focus:ring-blue-400 outline-none">
@@ -81,7 +91,7 @@
                         <label class="block text-sm font-medium text-gray-600 mb-1">Kasir</label>
                         <input type="text" id="input-cashier" class="w-full p-2 border rounded focus:ring-2 focus:ring-blue-400 outline-none">
                     </div>
-                    <div>
+                    <div class="sm:col-span-2"> <!-- Memanjang penuh di HP maupun Desktop untuk ruang lebih lega -->
                         <label class="block text-sm font-medium text-gray-600 mb-1">CS</label>
                         <input type="text" id="input-cs" class="w-full p-2 border rounded focus:ring-2 focus:ring-blue-400 outline-none">
                     </div>
@@ -90,9 +100,9 @@
 
             <!-- Daftar Produk -->
             <div class="bg-gray-50 p-4 rounded-lg border mb-6">
-                <div class="flex justify-between items-center mb-4">
+                <div class="flex flex-wrap justify-between items-center mb-4 gap-2">
                     <h3 class="font-semibold text-gray-700">Daftar Produk</h3>
-                    <button onclick="addItem()" class="flex items-center text-sm bg-blue-100 text-blue-700 px-3 py-1 rounded hover:bg-blue-200 transition">
+                    <button onclick="addItem()" class="flex items-center text-sm bg-blue-100 text-blue-700 px-3 py-1.5 rounded hover:bg-blue-200 transition">
                         <svg class="mr-1" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
                         Tambah Produk
                     </button>
@@ -114,22 +124,31 @@
         </div>
 
         <!-- PANEL KANAN: PREVIEW THERMAL & CETAK -->
-        <div class="w-1/2 flex flex-col items-center bg-gray-200 p-8 overflow-y-auto">
-            <div class="flex justify-between w-[80mm] mb-4 hide-on-print">
+        <div class="w-full md:w-1/2 h-auto md:h-full flex flex-col items-center bg-gray-200 p-4 md:p-8 overflow-y-auto">
+            
+            <div class="flex justify-between items-center w-full max-w-[80mm] mb-4 hide-on-print">
                 <h2 class="text-gray-700 font-semibold flex items-center text-sm whitespace-nowrap">
-                    <svg class="mr-2" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                    <svg class="mr-2 hidden sm:block" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
                     Preview Thermal
                 </h2>
-                <button onclick="window.print()" class="flex items-center bg-blue-600 text-white px-3 py-2 rounded-lg shadow hover:bg-blue-700 transition text-sm">
-                    <svg class="mr-1" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
-                    Cetak
-                </button>
+                <div class="flex gap-2 ml-auto">
+                    <!-- Tombol Download PDF -->
+                    <button onclick="downloadPDF()" title="Download PDF" class="flex items-center bg-green-600 text-white px-3 py-2 rounded-lg shadow hover:bg-green-700 transition text-sm">
+                        <svg class="sm:mr-1" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                        <span class="hidden sm:inline">PDF</span>
+                    </button>
+                    <!-- Tombol Cetak Browser -->
+                    <button onclick="window.print()" title="Cetak ke Printer" class="flex items-center bg-blue-600 text-white px-3 py-2 rounded-lg shadow hover:bg-blue-700 transition text-sm">
+                        <svg class="sm:mr-1" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+                        <span class="hidden sm:inline">Cetak</span>
+                    </button>
+                </div>
             </div>
 
-            <!-- Wadah untuk print-area saat mode editor -->
-            <div id="editor-preview-container">
+            <!-- Wadah untuk print-area saat mode editor (menghindari tumpah ke samping di HP super kecil) -->
+            <div id="editor-preview-container" class="w-full flex justify-center overflow-x-auto pb-10">
                 <!-- Elemen NOTA ACTUAL yang akan dipindah-pindah antara editor & viewer mode -->
-                <div id="print-area" class="bg-white shadow-2xl relative" style="width: 80mm; padding: 4mm; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; padding-bottom: 10mm;">
+                <div id="print-area" class="bg-white shadow-2xl relative shrink-0" style="width: 80mm; padding: 4mm; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; padding-bottom: 10mm;">
                     <!-- Konten nota dirender lewat JS -->
                 </div>
             </div>
@@ -184,12 +203,6 @@
 
         // Utilities
         const formatNumber = (num) => new Intl.NumberFormat('id-ID').format(num);
-
-        function getDynamicQrUrl() {
-            const baseUrl = window.location.origin + window.location.pathname;
-            const encodedData = btoa(unescape(encodeURIComponent(JSON.stringify(invoiceData))));
-            return `${baseUrl}?invoice=${encodedData}`;
-        }
 
         // --- CORE RENDERING ---
 
@@ -314,26 +327,29 @@
             const container = document.getElementById('items-container');
             container.innerHTML = invoiceData.items.map((item, index) => `
                 <div class="mb-4 bg-white p-3 border rounded-md shadow-sm relative item-row" data-id="${item.id}">
-                    <button onclick="removeItem(${item.id})" class="absolute top-2 right-2 text-red-500 hover:text-red-700">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                    <button onclick="removeItem(${item.id})" class="absolute top-2 right-2 text-red-500 hover:text-red-700 bg-white rounded-full">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
                     </button>
-                    <div class="grid grid-cols-12 gap-3 mb-2">
-                        <div class="col-span-12 md:col-span-6">
+                    <div class="grid grid-cols-1 md:grid-cols-12 gap-3 mb-2 pr-6"> <!-- Lebih bersahabat di HP -->
+                        <div class="md:col-span-6">
                             <label class="block text-xs text-gray-500 mb-1">Nama Produk</label>
-                            <input type="text" oninput="handleItemChange(${item.id}, 'name', this.value)" value="${item.name}" class="w-full p-1 border rounded text-sm font-semibold">
+                            <input type="text" oninput="handleItemChange(${item.id}, 'name', this.value)" value="${item.name}" class="w-full p-2 border rounded text-sm font-semibold outline-none focus:ring-1 focus:ring-blue-400">
                         </div>
-                        <div class="col-span-4 md:col-span-3">
-                            <label class="block text-xs text-gray-500 mb-1">Harga (Rp)</label>
-                            <input type="number" oninput="handleItemChange(${item.id}, 'price', this.value)" value="${item.price}" class="w-full p-1 border rounded text-sm">
-                        </div>
-                        <div class="col-span-4 md:col-span-3">
-                            <label class="block text-xs text-gray-500 mb-1">Qty</label>
-                            <input type="number" oninput="handleItemChange(${item.id}, 'qty', this.value)" value="${item.qty}" class="w-full p-1 border rounded text-sm">
+                        <!-- Harga dan Qty berjajar 2 kolom di HP -->
+                        <div class="grid grid-cols-2 gap-3 md:contents">
+                            <div class="md:col-span-3">
+                                <label class="block text-xs text-gray-500 mb-1">Harga (Rp)</label>
+                                <input type="number" oninput="handleItemChange(${item.id}, 'price', this.value)" value="${item.price}" class="w-full p-2 border rounded text-sm outline-none focus:ring-1 focus:ring-blue-400">
+                            </div>
+                            <div class="md:col-span-3">
+                                <label class="block text-xs text-gray-500 mb-1">Qty</label>
+                                <input type="number" oninput="handleItemChange(${item.id}, 'qty', this.value)" value="${item.qty}" class="w-full p-2 border rounded text-sm outline-none focus:ring-1 focus:ring-blue-400">
+                            </div>
                         </div>
                     </div>
                     <div>
-                        <label class="block text-xs text-gray-500 mb-1">Keterangan / Detail (Pisahkan baris dengan Enter)</label>
-                        <textarea rows="2" oninput="handleItemChange(${item.id}, 'details', this.value)" class="w-full p-1 border rounded text-xs outline-none focus:ring-1 focus:ring-blue-400">${item.details}</textarea>
+                        <label class="block text-xs text-gray-500 mb-1">Keterangan / Detail</label>
+                        <textarea rows="2" oninput="handleItemChange(${item.id}, 'details', this.value)" class="w-full p-2 border rounded text-xs outline-none focus:ring-1 focus:ring-blue-400">${item.details}</textarea>
                     </div>
                 </div>
             `).join('');
@@ -356,7 +372,7 @@
         }
 
 
-        // --- FUNGSI INTERAKSI ---
+        // --- FUNGSI INTERAKSI & EXPORT PDF ---
         window.handleItemChange = (id, field, value) => {
             const item = invoiceData.items.find(i => i.id === id);
             if (item) {
@@ -381,6 +397,31 @@
             invoiceData.items = invoiceData.items.filter(item => item.id !== id);
             renderItemsForm();
             renderReceipt();
+        };
+
+        // Konversi Nota HTML ke PDF Menggunakan html2pdf.js
+        window.downloadPDF = () => {
+            const element = document.getElementById('print-area');
+            
+            // Kalkulasi panjang kertas berdasarkan actual pixel di layar (agar tidak terpotong putih di bawah)
+            const pxHeight = element.offsetHeight;
+            const mmHeight = pxHeight * 0.264583; // Konversi Kasar Pixel ke Milimeter
+            
+            // Format File Name
+            const safeName = invoiceData.customer.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+            const filename = `Invoice_${safeName}.pdf`;
+
+            const opt = {
+                margin:       0,
+                filename:     filename,
+                image:        { type: 'jpeg', quality: 1 },
+                html2canvas:  { scale: 2, useCORS: true, backgroundColor: '#ffffff' },
+                // Pakai ukuran lebar fix thermal 80mm, tingginya menyesuaikan dinamis (min 100mm)
+                jsPDF:        { unit: 'mm', format: [80, Math.max(mmHeight + 5, 100)], orientation: 'portrait' }
+            };
+
+            // Jalankan Download
+            html2pdf().set(opt).from(element).save();
         };
 
         // --- INISIALISASI SAAT HALAMAN DIMUAT ---
